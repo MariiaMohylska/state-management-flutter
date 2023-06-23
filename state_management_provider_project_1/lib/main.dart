@@ -1,11 +1,21 @@
+import 'dart:collection';
+
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 
 void main() {
-  runApp(MaterialApp(
-    title: 'Flutter Demo',
-    theme: ThemeData(primarySwatch: Colors.blue),
-    debugShowCheckedModeBanner: false,
-    home: const HomePage(),
+  runApp(ChangeNotifierProvider(
+    create: (_) => BreadCrumbProvider(),
+    child: MaterialApp(
+      title: 'Flutter Demo',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      debugShowCheckedModeBanner: false,
+      home: const HomePage(),
+      routes: {
+        '/new': (context) => const NewBreadCrumbWidget(),
+      },
+    ),
   ));
 }
 
@@ -17,6 +27,126 @@ class HomePage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Home Page'),
+      ),
+      body: Column(
+        children: [
+          Consumer<BreadCrumbProvider>(
+            builder: (context, value, child) {
+              return BreadCrumbsWidget(breadCrumbs: value.items);
+            },
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pushNamed('/new');
+            },
+            child: const Text('Add new bread crumb'),
+          ),
+          TextButton(
+            onPressed: () {
+              context.read<BreadCrumbProvider>().reset();
+            },
+            child: const Text('Reset'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class BreadCrumb {
+  final String uuid;
+  bool isActive;
+  final String name;
+
+  BreadCrumb({required this.name, required this.isActive})
+      : uuid = const Uuid().v4();
+
+  void activate() => isActive = true;
+
+  @override
+  bool operator ==(covariant BreadCrumb other) => uuid == other.uuid;
+
+  @override
+  int get hashCode => uuid.hashCode;
+
+  String get title => name + (isActive ? ' > ' : '');
+}
+
+class BreadCrumbProvider extends ChangeNotifier {
+  final List<BreadCrumb> _items = [];
+
+  UnmodifiableListView<BreadCrumb> get items => UnmodifiableListView(_items);
+
+  void add(BreadCrumb breadCrumb) {
+    for (final item in _items) {
+      item.activate();
+    }
+
+    _items.add(breadCrumb);
+    notifyListeners();
+  }
+
+  void reset() {
+    _items.clear();
+    notifyListeners();
+  }
+}
+
+class BreadCrumbsWidget extends StatelessWidget {
+  final UnmodifiableListView<BreadCrumb> breadCrumbs;
+
+  const BreadCrumbsWidget({super.key, required this.breadCrumbs});
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      children: breadCrumbs
+          .map((breadCrumb) => Text(
+                breadCrumb.title,
+                style: TextStyle(
+                  color: breadCrumb.isActive ? Colors.blue : Colors.black,
+                ),
+              ))
+          .toList(),
+    );
+  }
+}
+
+class NewBreadCrumbWidget extends StatefulWidget {
+  const NewBreadCrumbWidget({super.key});
+
+  @override
+  State<NewBreadCrumbWidget> createState() => NewBreadCrumbWidgetState();
+}
+
+class NewBreadCrumbWidgetState extends State<NewBreadCrumbWidget> {
+  final _controller = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Add new bread crumb'),
+      ),
+      body: Column(
+        children: [
+          TextField(
+            controller: _controller,
+            decoration: const InputDecoration(
+                hintText: 'Enter a new bread crumb here...'),
+          ),
+          TextButton(
+            onPressed: () {
+              final text = _controller.text;
+              if (text.isNotEmpty) {
+                final breadCrumb = BreadCrumb(name: text, isActive: false);
+                context.read<BreadCrumbProvider>().add(breadCrumb);
+                Navigator.of(context).pop();
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
       ),
     );
   }
