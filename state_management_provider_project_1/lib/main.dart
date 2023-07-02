@@ -120,7 +120,19 @@ class NewBreadCrumbWidget extends StatefulWidget {
 }
 
 class NewBreadCrumbWidgetState extends State<NewBreadCrumbWidget> {
-  final _controller = TextEditingController();
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    _controller = TextEditingController();
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
